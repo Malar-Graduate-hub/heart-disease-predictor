@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>CardioSense — Heart Risk Predictor</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --red:    #e63946;
+    --red-d:  #b5202d;
+    --cream:  #fdf6ec;
+    --ink:    #1a1a2e;
+    --muted:  #6b6b7b;
+    --border: #e8e0d5;
+    --card:   #ffffff;
+    --green:  #2a9d5c;
+    --amber:  #e07b2a;
+    --shadow: 0 4px 24px rgba(26,26,46,0.09);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--cream);
+    color: var(--ink);
+    min-height: 100vh;
+  }
+
+  /* ── Header ─────────────────────────────── */
+  header {
+    background: var(--ink);
+    color: #fff;
+    padding: 0 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 64px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 16px rgba(0,0,0,.25);
+  }
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.35rem;
+    letter-spacing: -.01em;
+  }
+  .logo svg { width: 28px; height: 28px; }
+  .badge {
+    font-size: .7rem;
+    font-weight: 600;
+    background: var(--red);
+    color: #fff;
+    padding: 2px 8px;
+    border-radius: 20px;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+  }
+
+  /* ── Hero ────────────────────────────────── */
+  .hero {
+    background: linear-gradient(135deg, var(--ink) 0%, #2d2d4e 100%);
+    color: #fff;
+    padding: 4rem 2rem 5rem;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse 70% 60% at 50% 110%, rgba(230,57,70,.25) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .hero h1 {
+    font-family: 'DM Serif Display', serif;
+    font-size: clamp(2rem, 5vw, 3.2rem);
+    line-height: 1.15;
+    margin-bottom: .8rem;
+  }
+  .hero h1 em { color: var(--red); font-style: italic; }
+  .hero p {
+    font-size: 1.05rem;
+    color: rgba(255,255,255,.7);
+    max-width: 560px;
+    margin: 0 auto;
+    line-height: 1.6;
+  }
+  .pill-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem;
+    justify-content: center;
+    margin-top: 1.6rem;
+  }
+  .pill {
+    background: rgba(255,255,255,.1);
+    border: 1px solid rgba(255,255,255,.2);
+    color: rgba(255,255,255,.85);
+    font-size: .78rem;
+    font-weight: 500;
+    padding: 4px 12px;
+    border-radius: 20px;
+    letter-spacing: .03em;
+  }
+
+  /* ── Main layout ─────────────────────────── */
+  main {
+    max-width: 860px;
+    margin: -2rem auto 3rem;
+    padding: 0 1.2rem;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* ── Card ────────────────────────────────── */
+  .card {
+    background: var(--card);
+    border-radius: 18px;
+    box-shadow: var(--shadow);
+    padding: 2.4rem 2.4rem 2rem;
+  }
+
+  .section-label {
+    font-size: .72rem;
+    font-weight: 600;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--red);
+    margin-bottom: 1.2rem;
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+  }
+  .section-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* ── Grid ────────────────────────────────── */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+    gap: 1.2rem 1.4rem;
+  }
+
+  .field { display: flex; flex-direction: column; gap: .35rem; }
+
+  label {
+    font-size: .8rem;
+    font-weight: 600;
+    color: var(--muted);
+    letter-spacing: .02em;
+  }
+  label span { color: var(--red); margin-left: 2px; }
+
+  input, select {
+    font-family: 'DM Sans', sans-serif;
+    font-size: .95rem;
+    color: var(--ink);
+    background: var(--cream);
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    padding: .6rem .85rem;
+    outline: none;
+    transition: border-color .2s, box-shadow .2s;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+  input:focus, select:focus {
+    border-color: var(--red);
+    box-shadow: 0 0 0 3px rgba(230,57,70,.12);
+  }
+  input.error, select.error { border-color: var(--red); background: #fff5f5; }
+
+  .select-wrap { position: relative; }
+  .select-wrap::after {
+    content: '▾';
+    position: absolute;
+    right: .85rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--muted);
+    pointer-events: none;
+    font-size: .85rem;
+  }
+  .select-wrap select { width: 100%; cursor: pointer; }
+
+  .hint {
+    font-size: .72rem;
+    color: var(--muted);
+    margin-top: .15rem;
+  }
+
+  /* ── Divider ─────────────────────────────── */
+  .divider {
+    height: 1px;
+    background: var(--border);
+    margin: 1.8rem 0;
+  }
+
+  /* ── Submit button ───────────────────────── */
+  .btn-predict {
+    width: 100%;
+    background: var(--red);
+    color: #fff;
+    border: none;
+    border-radius: 12px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 1rem;
+    font-weight: 600;
+    padding: .9rem 1.5rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: .6rem;
+    transition: background .2s, transform .1s, box-shadow .2s;
+    box-shadow: 0 4px 16px rgba(230,57,70,.35);
+    letter-spacing: .01em;
+  }
+  .btn-predict:hover { background: var(--red-d); box-shadow: 0 6px 20px rgba(230,57,70,.45); }
+  .btn-predict:active { transform: scale(.98); }
+  .btn-predict:disabled { background: #ccc; box-shadow: none; cursor: not-allowed; }
+
+  .spinner {
+    width: 18px; height: 18px;
+    border: 2.5px solid rgba(255,255,255,.35);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin .7s linear infinite;
+    display: none;
+  }
+  .btn-predict.loading .spinner { display: block; }
+  .btn-predict.loading .btn-text { display: none; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Result card ─────────────────────────── */
+  #result {
+    margin-top: 1.8rem;
+    border-radius: 16px;
+    overflow: hidden;
+    display: none;
+    animation: slideUp .4s ease;
+  }
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .result-header {
+    padding: 1.5rem 2rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+  .result-icon {
+    width: 52px; height: 52px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    flex-shrink: 0;
+  }
+  .result-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.5rem;
+  }
+  .result-sub {
+    font-size: .88rem;
+    opacity: .8;
+    margin-top: .15rem;
+  }
+  .result-body {
+    background: rgba(255,255,255,.85);
+    padding: 1.4rem 2rem 1.8rem;
+  }
+
+  /* risk colours */
+  #result.low    { background: linear-gradient(135deg, #1a7f50, #2a9d5c); color: #fff; }
+  #result.low    .result-icon { background: rgba(255,255,255,.2); }
+  #result.medium { background: linear-gradient(135deg, #b8621a, #e07b2a); color: #fff; }
+  #result.medium .result-icon { background: rgba(255,255,255,.2); }
+  #result.high   { background: linear-gradient(135deg, #b5202d, #e63946); color: #fff; }
+  #result.high   .result-icon { background: rgba(255,255,255,.2); }
+
+  .prob-bar-wrap { margin-bottom: 1rem; }
+  .prob-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: .82rem;
+    font-weight: 600;
+    color: var(--muted);
+    margin-bottom: .4rem;
+  }
+  .prob-bar {
+    height: 10px;
+    background: var(--border);
+    border-radius: 99px;
+    overflow: hidden;
+  }
+  .prob-fill {
+    height: 100%;
+    border-radius: 99px;
+    transition: width 1s cubic-bezier(.22,1,.36,1);
+    width: 0%;
+  }
+
+  .result-message {
+    font-size: .92rem;
+    color: var(--ink);
+    line-height: 1.6;
+    background: rgba(26,26,46,.04);
+    border-radius: 10px;
+    padding: .85rem 1rem;
+  }
+
+  .disclaimer {
+    margin-top: 1rem;
+    font-size: .75rem;
+    color: var(--muted);
+    line-height: 1.5;
+    border-top: 1px solid var(--border);
+    padding-top: .85rem;
+  }
+
+  /* ── Error toast ─────────────────────────── */
+  #error-box {
+    display: none;
+    margin-top: 1rem;
+    background: #fff5f5;
+    border: 1.5px solid #fbb;
+    border-radius: 10px;
+    padding: .8rem 1rem;
+    font-size: .88rem;
+    color: #c0392b;
+  }
+
+  /* ── Footer ──────────────────────────────── */
+  footer {
+    text-align: center;
+    padding: 1.5rem 1rem;
+    font-size: .78rem;
+    color: var(--muted);
+  }
+
+  @media (max-width: 520px) {
+    .card { padding: 1.4rem 1.1rem; }
+    .result-header { padding: 1.2rem 1.2rem; }
+    .result-body   { padding: 1rem 1.2rem 1.4rem; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ── Header ─────────────────────────────────────────────── -->
+<header>
+  <div class="logo">
+    <svg viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M14 24s-10-6.5-10-13A6 6 0 0 1 14 7.5 6 6 0 0 1 24 11c0 6.5-10 13-10 13z" fill="#e63946"/>
+      <polyline points="8,13 11,16 14,10 17,16 20,13" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    </svg>
+    CardioSense
+  </div>
+  <span class="badge">ML Powered</span>
+</header>
+
+<!-- ── Hero ───────────────────────────────────────────────── -->
+<div class="hero">
+  <h1>Know Your Heart<br/><em>Risk</em> in Seconds</h1>
+  <p>Enter your clinical parameters below and our Random Forest model will assess your likelihood of heart disease.</p>
+  <div class="pill-row">
+    <span class="pill">87.5% Accuracy</span>
+    <span class="pill">ROC-AUC 0.94</span>
+    <span class="pill">88% Recall</span>
+    <span class="pill">918-sample Dataset</span>
+  </div>
+</div>
+
+<!-- ── Main form ───────────────────────────────────────────── -->
+<main>
+  <div class="card">
+
+    <!-- Section 1: Demographics -->
+    <div class="section-label">Demographics</div>
+    <div class="grid">
+      <div class="field">
+        <label for="Age">Age <span>*</span></label>
+        <input type="number" id="Age" placeholder="e.g. 54" min="1" max="120"/>
+      </div>
+      <div class="field">
+        <label for="Sex">Biological Sex <span>*</span></label>
+        <div class="select-wrap">
+          <select id="Sex">
+            <option value="">Select…</option>
+            <option value="M">Male</option>
+            <option value="F">Female</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Section 2: Vitals -->
+    <div class="section-label">Vitals & Labs</div>
+    <div class="grid">
+      <div class="field">
+        <label for="RestingBP">Resting BP <span>*</span></label>
+        <input type="number" id="RestingBP" placeholder="mm Hg, e.g. 130"/>
+        <span class="hint">Normal: 90–120 mm Hg</span>
+      </div>
+      <div class="field">
+        <label for="Cholesterol">Cholesterol <span>*</span></label>
+        <input type="number" id="Cholesterol" placeholder="mg/dL, e.g. 245"/>
+        <span class="hint">Normal: &lt;200 mg/dL</span>
+      </div>
+      <div class="field">
+        <label for="FastingBS">Fasting Blood Sugar <span>*</span></label>
+        <div class="select-wrap">
+          <select id="FastingBS">
+            <option value="">Select…</option>
+            <option value="0">≤ 120 mg/dL (Normal)</option>
+            <option value="1">&gt; 120 mg/dL (High)</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label for="MaxHR">Max Heart Rate <span>*</span></label>
+        <input type="number" id="MaxHR" placeholder="bpm, e.g. 150"/>
+        <span class="hint">Achieved during exercise</span>
+      </div>
+      <div class="field">
+        <label for="Oldpeak">ST Depression (Oldpeak) <span>*</span></label>
+        <input type="number" id="Oldpeak" placeholder="e.g. 1.0" step="0.1"/>
+        <span class="hint">Exercise vs. rest ECG</span>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Section 3: ECG & Symptoms -->
+    <div class="section-label">ECG & Symptoms</div>
+    <div class="grid">
+      <div class="field">
+        <label for="ChestPainType">Chest Pain Type <span>*</span></label>
+        <div class="select-wrap">
+          <select id="ChestPainType">
+            <option value="">Select…</option>
+            <option value="ATA">ATA — Atypical Angina</option>
+            <option value="NAP">NAP — Non-Anginal Pain</option>
+            <option value="ASY">ASY — Asymptomatic</option>
+            <option value="TA">TA — Typical Angina</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label for="RestingECG">Resting ECG <span>*</span></label>
+        <div class="select-wrap">
+          <select id="RestingECG">
+            <option value="">Select…</option>
+            <option value="Normal">Normal</option>
+            <option value="ST">ST — ST-T wave abnormality</option>
+            <option value="LVH">LVH — Left ventricular hypertrophy</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label for="ExerciseAngina">Exercise-Induced Angina <span>*</span></label>
+        <div class="select-wrap">
+          <select id="ExerciseAngina">
+            <option value="">Select…</option>
+            <option value="Y">Yes</option>
+            <option value="N">No</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label for="ST_Slope">ST Slope <span>*</span></label>
+        <div class="select-wrap">
+          <select id="ST_Slope">
+            <option value="">Select…</option>
+            <option value="Up">Up</option>
+            <option value="Flat">Flat</option>
+            <option value="Down">Down</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <button class="btn-predict" id="predictBtn" onclick="submitPrediction()">
+      <div class="spinner"></div>
+      <span class="btn-text">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        Analyse My Heart Risk
+      </span>
+    </button>
+
+    <!-- Error box -->
+    <div id="error-box"></div>
+
+    <!-- Result card -->
+    <div id="result">
+      <div class="result-header">
+        <div class="result-icon" id="result-icon"></div>
+        <div>
+          <div class="result-title" id="result-title"></div>
+          <div class="result-sub"  id="result-sub"></div>
+        </div>
+      </div>
+      <div class="result-body">
+        <div class="prob-bar-wrap">
+          <div class="prob-label">
+            <span>Risk Probability</span>
+            <span id="prob-pct"></span>
+          </div>
+          <div class="prob-bar"><div class="prob-fill" id="prob-fill"></div></div>
+        </div>
+        <div class="result-message" id="result-message"></div>
+        <p class="disclaimer">⚠️ This tool is for <strong>informational purposes only</strong> and does not constitute medical advice. Always consult a qualified healthcare professional for diagnosis and treatment.</p>
+      </div>
+    </div>
+
+  </div><!-- /.card -->
+</main>
+
+<footer>CardioSense · Built with FastAPI &amp; Scikit-learn · Dataset: Heart Failure Prediction (fedesoriano, Kaggle)</footer>
+
+<script>
+  // ── Change this to your deployed API URL when deploying ─────────────────────
+  const API_BASE = "http://localhost:8000";
+  // ---------------------------------------------------------------------------
+
+  const FIELDS = ["Age","Sex","ChestPainType","RestingBP","Cholesterol",
+                  "FastingBS","RestingECG","MaxHR","ExerciseAngina","Oldpeak","ST_Slope"];
+
+  function clearErrors() {
+    FIELDS.forEach(id => document.getElementById(id).classList.remove("error"));
+    const eb = document.getElementById("error-box");
+    eb.style.display = "none";
+    eb.textContent = "";
+  }
+
+  function showError(msg) {
+    const eb = document.getElementById("error-box");
+    eb.textContent = "⚠ " + msg;
+    eb.style.display = "block";
+  }
+
+  function validate() {
+    let ok = true;
+    FIELDS.forEach(id => {
+      const el = document.getElementById(id);
+      const v  = el.value.trim();
+      if (v === "" || v === null) {
+        el.classList.add("error");
+        ok = false;
+      }
+    });
+    if (!ok) showError("Please fill in all required fields before submitting.");
+    return ok;
+  }
+
+  async function submitPrediction() {
+    clearErrors();
+    if (!validate()) return;
+
+    const btn = document.getElementById("predictBtn");
+    btn.classList.add("loading");
+    btn.disabled = true;
+    document.getElementById("result").style.display = "none";
+
+    const payload = {
+      Age:            parseInt(document.getElementById("Age").value),
+      Sex:            document.getElementById("Sex").value,
+      ChestPainType:  document.getElementById("ChestPainType").value,
+      RestingBP:      parseFloat(document.getElementById("RestingBP").value),
+      Cholesterol:    parseFloat(document.getElementById("Cholesterol").value),
+      FastingBS:      parseInt(document.getElementById("FastingBS").value),
+      RestingECG:     document.getElementById("RestingECG").value,
+      MaxHR:          parseFloat(document.getElementById("MaxHR").value),
+      ExerciseAngina: document.getElementById("ExerciseAngina").value,
+      Oldpeak:        parseFloat(document.getElementById("Oldpeak").value),
+      ST_Slope:       document.getElementById("ST_Slope").value,
+    };
+
+    try {
+      const res  = await fetch(`${API_BASE}/predict`, {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify(payload),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        showError(data.detail || "Server error. Please try again.");
+        return;
+      }
+
+      renderResult(data);
+
+    } catch (err) {
+      showError("Could not reach the API. Make sure the backend is running at " + API_BASE);
+    } finally {
+      btn.classList.remove("loading");
+      btn.disabled = false;
+    }
+  }
+
+  function renderResult(data) {
+    const resultEl = document.getElementById("result");
+
+    // ── FIXED: use data.probability and data.result from API ──
+    const pct = data.probability;
+
+    // Determine risk tier based on probability
+    let tier, icon, sub;
+    if (pct >= 70) {
+      tier = "high";   icon = "❤️‍🔥"; sub = "Medical consultation recommended";
+    } else if (pct >= 40) {
+      tier = "medium"; icon = "💛";    sub = "Preventive measures advised";
+    } else {
+      tier = "low";    icon = "💚";    sub = "Keep up the healthy habits";
+    }
+
+    resultEl.className = tier;
+    document.getElementById("result-icon").textContent    = icon;
+    document.getElementById("result-title").textContent   = data.result;
+    document.getElementById("result-sub").textContent     = sub;
+    document.getElementById("result-message").textContent = data.message;
+    document.getElementById("prob-pct").textContent       = pct + "%";
+
+    // Colour the bar based on tier
+    const fill = document.getElementById("prob-fill");
+    fill.style.background = tier === "high"   ? "#e63946"
+                          : tier === "medium" ? "#e07b2a"
+                          :                     "#2a9d5c";
+    fill.style.width = "0%";
+
+    resultEl.style.display = "block";
+    resultEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
+
+    // Animate bar after short delay
+    setTimeout(() => { fill.style.width = Math.min(pct, 100) + "%"; }, 80);
+  }
+</script>
+</body>
+</html>

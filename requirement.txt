@@ -1,0 +1,9 @@
+numpy
+pandas
+scikit-learn
+scipy
+joblib
+fastapi
+uvicorn[standard]
+imbalanced-learn
+python-multipart
