@@ -1,26 +1,14 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 import joblib
 import numpy as np
-import pandas as pd
 import os
 
-# Automatically find the correct path
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-MODELS_DIR = os.path.join(BASE_DIR, 'models')
+app = FastAPI(title="Heart Disease Prediction API")
 
-# Load all saved files
-model          = joblib.load(os.path.join(MODELS_DIR, 'heart_model.pkl'))
-scaler         = joblib.load(os.path.join(MODELS_DIR, 'scaler.pkl'))
-num_imputer    = joblib.load(os.path.join(MODELS_DIR, 'num_imputer.pkl'))
-cat_imputer    = joblib.load(os.path.join(MODELS_DIR, 'cat_imputer.pkl'))
-label_encoders = joblib.load(os.path.join(MODELS_DIR, 'label_encoders.pkl'))
-
-# ─── Create the app ─────────────────────────────────
-app = FastAPI()
-
-# ─── CORS ───────────────────────────────────────────
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -28,72 +16,87 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ─── Input Schema ───────────────────────────────────
+# ── Load saved artifacts ──────────────────────────────────────────────────────
+BASE_DIR   = os.path.dirname(os.path.abspath(__file__))
+MODELS_DIR = os.path.join(BASE_DIR, 'models')
+
+model          = joblib.load(os.path.join(MODELS_DIR, 'heart_model.pkl'))
+scaler         = joblib.load(os.path.join(MODELS_DIR, 'scaler.pkl'))
+num_imputer    = joblib.load(os.path.join(MODELS_DIR, 'num_imputer.pkl'))
+cat_imputer    = joblib.load(os.path.join(MODELS_DIR, 'cat_imputer.pkl'))
+label_encoders = joblib.load(os.path.join(MODELS_DIR, 'label_encoders.pkl'))
+
+# ── Column definitions ────────────────────────────────────────────────────────
+NUMERICAL_COLS   = ["Age", "RestingBP", "Cholesterol", "MaxHR", "Oldpeak"]
+CATEGORICAL_COLS = ["Sex", "ChestPainType", "FastingBS", "RestingECG", "ExerciseAngina", "ST_Slope"]
+
+# ── Request schema ────────────────────────────────────────────────────────────
 class PatientData(BaseModel):
     Age: float
     Sex: str
     ChestPainType: str
     RestingBP: float
     Cholesterol: float
-    FastingBS: float
+    FastingBS: int
     RestingECG: str
     MaxHR: float
     ExerciseAngina: str
     Oldpeak: float
     ST_Slope: str
 
-# ─── Column types ───────────────────────────────────
-numerical_columns   = ['Age', 'RestingBP', 'Cholesterol',
-                       'FastingBS', 'MaxHR', 'Oldpeak']
+# ── Preprocess ────────────────────────────────────────────────────────────────
+def preprocess(data: PatientData) -> np.ndarray:
+    raw = {
+        "Age":            data.Age,
+        "RestingBP":      data.RestingBP,
+        "Cholesterol":    data.Cholesterol,
+        "MaxHR":          data.MaxHR,
+        "Oldpeak":        data.Oldpeak,
+        "Sex":            data.Sex,
+        "ChestPainType":  data.ChestPainType,
+        "FastingBS":      str(data.FastingBS),
+        "RestingECG":     data.RestingECG,
+        "ExerciseAngina": data.ExerciseAngina,
+        "ST_Slope":       data.ST_Slope,
+    }
 
-categorical_columns = ['Sex', 'ChestPainType', 'RestingECG',
-                       'ExerciseAngina', 'ST_Slope']
+    num_arr = np.array([[raw[c] for c in NUMERICAL_COLS]])
+    num_arr = num_imputer.transform(num_arr)
+    num_arr = scaler.transform(num_arr)
 
-# ─── Home route ─────────────────────────────────────
-@app.get("/")
-def home():
-    return {"message": "Heart Disease Prediction API is running!"}
+    cat_arr = np.array([[raw[c] for c in CATEGORICAL_COLS]])
+    cat_arr = cat_imputer.transform(cat_arr)
+    cat_encoded = np.zeros_like(cat_arr, dtype=float)
+    for i, col in enumerate(CATEGORICAL_COLS):
+        le = label_encoders[col]
+        cat_encoded[0, i] = le.transform([cat_arr[0, i]])[0]
 
-# ─── Predict route ──────────────────────────────────
+    return np.hstack([num_arr, cat_encoded])
+
+# ── API endpoints ─────────────────────────────────────────────────────────────
+@app.get("/health")
+def health():
+    return {"status": "ok"}
+
 @app.post("/predict")
 def predict(data: PatientData):
-
-    # Step 1 — Build DataFrame
-    input_dict = {
-        'Age':            [data.Age],
-        'Sex':            [data.Sex],
-        'ChestPainType':  [data.ChestPainType],
-        'RestingBP':      [data.RestingBP],
-        'Cholesterol':    [data.Cholesterol],
-        'FastingBS':      [data.FastingBS],
-        'RestingECG':     [data.RestingECG],
-        'MaxHR':          [data.MaxHR],
-        'ExerciseAngina': [data.ExerciseAngina],
-        'Oldpeak':        [data.Oldpeak],
-        'ST_Slope':       [data.ST_Slope],
-    }
-    df = pd.DataFrame(input_dict)
-
-    # Step 2 — Impute numerical
-    df[numerical_columns] = num_imputer.transform(df[numerical_columns])
-
-    # Step 3 — Impute categorical
-    df[categorical_columns] = cat_imputer.transform(df[categorical_columns])
-
-    # Step 4 — Encode categorical
-    for col in categorical_columns:
-        le = label_encoders[col]
-        df[col] = le.transform(df[col])
-
-    # Step 5 — Scale numerical
-    df[numerical_columns] = scaler.transform(df[numerical_columns])
-
-    # Step 6 — Predict
-    prediction  = model.predict(df)[0]
-    probability = model.predict_proba(df)[0][1]
-
+    X          = preprocess(data)
+    pred       = int(model.predict(X)[0])
+    prob       = float(model.predict_proba(X)[0][1])
+    risk_pct   = round(prob * 100, 1)
+    risk_label = "High Risk" if pred == 1 else "Low Risk"
     return {
-        "result":      "At Risk" if prediction == 1 else "Low Risk",
-        "probability": round(float(probability) * 100, 2),
-        "message":     "Please consult a doctor for proper medical advice."
+        "prediction":   pred,
+        "probability":  prob,
+        "risk_percent": risk_pct,
+        "risk_label":   risk_label,
     }
+
+# ── Serve frontend ────────────────────────────────────────────────────────────
+STATIC_DIR = os.path.join(BASE_DIR, "static")
+
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+
+@app.get("/")
+def serve_frontend():
+    return FileResponse(os.path.join(STATIC_DIR, "index.html"))
