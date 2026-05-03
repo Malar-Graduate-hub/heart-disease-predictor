@@ -27,6 +27,7 @@ label_encoders = joblib.load(os.path.join(MODELS_DIR, 'label_encoders.pkl'))
 
 NUMERICAL_COLS   = ['Age', 'RestingBP', 'Cholesterol', 'FastingBS', 'MaxHR', 'Oldpeak']
 CATEGORICAL_COLS = ['Sex', 'ChestPainType', 'RestingECG', 'ExerciseAngina', 'ST_Slope']
+ALL_FEATURES     = NUMERICAL_COLS + CATEGORICAL_COLS
 
 class PatientData(BaseModel):
     Age:            float
@@ -77,11 +78,22 @@ def predict(data: PatientData):
     prob       = float(model.predict_proba(X)[0][1])
     risk_pct   = round(prob * 100, 1)
     risk_label = "High Risk" if pred == 1 else "Low Risk"
+
+    # Feature importances
+    importances = model.feature_importances_
+    feature_scores = [
+        {"feature": name, "importance": round(float(imp) * 100, 1)}
+        for name, imp in zip(ALL_FEATURES, importances)
+    ]
+    feature_scores.sort(key=lambda x: x["importance"], reverse=True)
+    top_features = feature_scores[:6]
+
     return {
         "prediction":   pred,
         "probability":  prob,
         "risk_percent": risk_pct,
         "risk_label":   risk_label,
+        "top_features": top_features,
     }
 
 STATIC_DIR = os.path.join(BASE_DIR, "static")
